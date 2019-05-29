@@ -419,7 +419,7 @@ keepass.testAssociation = async function(callback, tab, enableTimeout = false, t
         page.tabs[tab.id].errorMessage = null;
     }
 
-    if (!keepass.isKeePassXCAvailable && !page.settings.automaticReconnect) {
+    /*if (!keepass.isKeePassXCAvailable && !page.settings.automaticReconnect) {
         try {
             await keepass.reconnect();
         } catch (err) {
@@ -427,7 +427,7 @@ keepass.testAssociation = async function(callback, tab, enableTimeout = false, t
             callback(false);
             return false;
         }
-    }
+    }*/
 
     keepass.getDatabaseHash((dbHash) => {
         if (!dbHash) {
@@ -957,16 +957,22 @@ keepass.connectToNative = function() {
 };
 
 keepass.onNativeMessage = function(response) {
-    //console.log('Received message: ' + JSON.stringify(response));
+    console.log('Received message: ' + JSON.stringify(response));
 
     // Handle database lock/unlock status
     if (response.action === kpActions.DATABASE_LOCKED || response.action === kpActions.DATABASE_UNLOCKED) {
         keepass.updateDatabase();
+    } else if (response.action === 'reconnected') {
+        setTimeout(function() {
+            keepass.reconnect();
+        }, 1000);
+        //keepass.reconnect();
+    } else if (response.action === 'disconnected') {
+        disconnect();
     }
 };
 
-function onDisconnected() {
-    keepass.nativePort = null;
+function disconnect() {
     keepass.isConnected = false;
     keepass.isDatabaseClosed = true;
     keepass.isKeePassXCAvailable = false;
@@ -976,6 +982,11 @@ function onDisconnected() {
     page.clearCredentials(page.currentTabId, true);
     keepass.updatePopup('cross');
     keepass.updateDatabaseHashToContent();
+}
+
+function onDisconnected() {
+    keepass.nativePort = null;
+    disconnect();
     console.log('Failed to connect: ' + (browser.runtime.lastError === null ? 'Unknown error' : browser.runtime.lastError.message));
 }
 
@@ -1154,7 +1165,6 @@ keepass.disableAutomaticReconnect = function() {
 
 keepass.reconnect = function(callback, tab) {
     return new Promise((resolve) => {
-        keepass.connectToNative();
         keepass.generateNewKeyPair();
         keepass.changePublicKeys(tab, true).then((r) => {
             keepass.getDatabaseHash((gdRes) => {
@@ -1198,10 +1208,10 @@ keepass.updateDatabaseHashToContent = function() {
             browser.tabs.sendMessage(tabs[0].id, {
                 action: 'check_database_hash',
                 hash: { old: keepass.previousDatabaseHash, new: keepass.databaseHash }
-            });
+            }).catch((e) => {});
             keepass.previousDatabaseHash = keepass.databaseHash;
         }
-    });
+    }).catch((err) => {});
 };
 
 keepass.compareVersion = function(minimum, current, canBeEqual = true) {
