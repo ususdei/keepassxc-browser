@@ -630,6 +630,15 @@ kpxcObserverHelper.getInputs = function(target) {
     return inputs;
 };
 
+// Returns all input fields from a form that has 'data-kpxc-id' defined
+kpxcObserverHelper.getInputsFromForm = function(target) {
+    if (target === undefined || target.nodeName !== 'FORM') {
+        return [];
+    }
+
+    return Array.from(target.elements).filter(e => e.nodeName === 'INPUT' && e.hasAttribute('data-kpxc-id'));
+};
+
 kpxcObserverHelper.getId = function(target) {
     return target.classList.length === 0 ? target.id : target.classList;
 };
@@ -682,6 +691,14 @@ kpxcObserverHelper.handleObserverRemove = function(target) {
     const inputs = kpxcObserverHelper.getInputs(target);
     if (inputs.length === 0) {
         return;
+    }
+
+    // Check if a previously identified form has removed -> detect input fields again if needed
+    const formInputs = kpxcObserverHelper.getInputsFromForm(target);
+    if (formInputs.length > 0 && formInputs.length === _detectedFields) {
+        _detectedFields = 0;
+        _called.retrieveCredentials = false;
+        kpxc.initCredentialFields(true);
     }
 
     // Remove target element id from the list
@@ -1022,7 +1039,7 @@ kpxc.getFormActionUrl = function(combination) {
     let action = null;
 
     if (form && form.length > 0) {
-        action = form[0].action;
+        action = form.action;
     }
 
     if (typeof(action) !== 'string' || action === '') {
