@@ -104,7 +104,10 @@
                 "default": "Alt+Shift+G",
                 "mac": "MacCtrl+Shift+G"
             }
-        }
+        },
+        "perform_autotype": {
+          "description": "Perform Global Auto-Type"
+      }
     },
     "web_accessible_resources": [
         "icons/keepassxc.svg",

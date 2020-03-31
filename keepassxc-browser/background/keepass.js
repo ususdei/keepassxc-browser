@@ -36,7 +36,8 @@ const kpActions = {
     DATABASE_LOCKED: 'database-locked',
     DATABASE_UNLOCKED: 'database-unlocked',
     GET_DATABASE_GROUPS: 'get-database-groups',
-    CREATE_NEW_GROUP: 'create-new-group'
+    CREATE_NEW_GROUP: 'create-new-group',
+    PERFORM_AUTOTYPE: 'perform-autotype'
 };
 
 const kpErrors = {
@@ -772,6 +773,48 @@ keepass.createNewGroup = async function(tab, args = []) {
     } catch (err) {
         console.log('createNewGroup failed: ', err);
         return [];
+    }
+};
+
+keepass.performAutotype = async function(tab, args = []) {
+    if (!keepass.isConnected) {
+        keepass.handleError(tab, kpErrors.TIMEOUT_OR_NOT_CONNECTED);
+        return false;
+    }
+
+    const kpAction = kpActions.PERFORM_AUTOTYPE;
+    const [ nonce, incrementedNonce ] = keepass.getNonces();
+
+    const messageData = {
+        action: kpAction,
+        url: args[0]
+    };
+
+    const request = keepass.buildRequest(kpAction, keepass.encrypt(messageData, nonce), nonce, keepass.clientID);
+
+    try {
+        const response = await keepass.sendNativeMessage(request);
+        if (response.message && response.nonce) {
+            const res = keepass.decrypt(response.message, response.nonce);
+            if (!res) {
+                keepass.handleError(tab, kpErrors.CANNOT_DECRYPT_MESSAGE);
+                return false;
+            }
+
+            const message = nacl.util.encodeUTF8(res);
+            const parsed = JSON.parse(message);
+
+            if (keepass.verifyResponse(parsed, incrementedNonce)) {
+                return true;
+            }
+        } else if (response.error && response.errorCode) {
+            keepass.handleError(tab, response.errorCode, response.error);
+        }
+
+        return false;
+    } catch (err) {
+        console.log('performAutotype failed: ', err);
+        return false;
     }
 };
 
