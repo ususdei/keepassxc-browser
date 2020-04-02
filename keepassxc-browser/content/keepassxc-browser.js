@@ -843,7 +843,10 @@ kpxc.initObserver = function() {
 
         for (const mut of mutations) {
             // Skip text nodes and base HTML element
-            if (mut.target.nodeType === Node.TEXT_NODE || mut.target.nodeName === 'HTML') {
+            if (mut.target.nodeType === Node.TEXT_NODE
+                || mut.target.nodeName === 'HTML'
+                || mut.target.nodeName === 'LINK'
+                || mut.target.nodeName === 'HEAD') {
                 continue;
             }
 
